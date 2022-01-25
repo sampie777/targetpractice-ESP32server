@@ -14,6 +14,8 @@
 
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+#define SENSOR_THRESHOLD 10     // Out of 1023
+#define SENSOR_PIN 15
 #define LED_BUILTIN 2
 
 bool isHit = false;
@@ -44,6 +46,23 @@ class MyCallbacks : public BLECharacteristicCallbacks {
     }
 };
 
+void checkIfIsHit() {
+    int value = analogRead(SENSOR_PIN);
+    if (value < SENSOR_THRESHOLD) {
+        return;
+    }
+
+    isHit = true;
+}
+
+void outputIsHit() {
+    if (isHit) {
+        digitalWrite(LED_BUILTIN, LOW);
+    } else {
+        digitalWrite(LED_BUILTIN, HIGH);
+    }
+}
+
 void setup() {
     Serial.begin(115200);
 //    Serial.println("1- Download and install an BLE scanner app in your phone");
@@ -53,6 +72,7 @@ void setup() {
 //    Serial.println("5- See the magic =)");
 
     pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(SENSOR_PIN, INPUT);
 
     BLEDevice::init("Target Practice");
     BLEServer *pServer = BLEDevice::createServer();
@@ -77,10 +97,7 @@ void setup() {
 }
 
 void loop() {
-    if (isHit) {
-        digitalWrite(LED_BUILTIN, LOW);
-    } else {
-        digitalWrite(LED_BUILTIN, HIGH);
-    }
+    checkIfIsHit();
+    outputIsHit();
     delay(20);
 }
