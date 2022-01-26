@@ -17,14 +17,15 @@
 #define CONFIG_CHARACTERISTIC_UUID "aeb5483e-46e1-5688-c7f5-ea07361b26a9"
 #define SENSOR_PIN 15
 #define LED_BUILTIN 2
+#define LED_CHANNEL 0
 
 bool isOn = true;
 bool isHit = false;
+int brightness = 100;
 int hitThreshold = 800;     // Out of 4095
 int hitForce = 0;
 unsigned long resetTime = millis();
 unsigned long hitDuration = 0;
-int brightness = 255;
 
 BLEServer *pServer;
 bool advertisingStarted = false;
@@ -155,9 +156,9 @@ void checkIfIsHit() {
 
 void outputIsHit() {
     if (isOn) {
-        digitalWrite(LED_BUILTIN, HIGH);
+        ledcWrite(LED_CHANNEL, brightness);
     } else {
-        digitalWrite(LED_BUILTIN, LOW);
+        ledcWrite(LED_CHANNEL, 0);
     }
 }
 
@@ -205,6 +206,8 @@ void setup() {
 
     pinMode(LED_BUILTIN, OUTPUT);
     pinMode(SENSOR_PIN, INPUT);
+    ledcSetup(0, 4000, 8);
+    ledcAttachPin(LED_BUILTIN, LED_CHANNEL);
 
     BLEDevice::init("Target Practice");
     pServer = BLEDevice::createServer();
