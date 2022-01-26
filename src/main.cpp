@@ -106,12 +106,20 @@ class ConfigCallback : public BLECharacteristicCallbacks {
         }
 
         if (value.rfind("force;", 0) == 0) {
-            sscanf(value.c_str(), "force;%d", &hitThreshold);
+            int newValue;
+            sscanf(value.c_str(), "force;%d", &newValue);
+            if (newValue > 0) {
+                hitThreshold = newValue;
+            }
             return;
         }
 
         if (value.rfind("bright;") == 0) {
-            sscanf(value.c_str(), "bright;%d", &brightness);
+            int newValue;
+            sscanf(value.c_str(), "bright;%d", &newValue);
+            if (newValue > 0 && newValue < 256) {
+                brightness = newValue;
+            }
             return;
         }
     }
