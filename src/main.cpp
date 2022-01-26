@@ -14,11 +14,15 @@
 
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
-#define SENSOR_THRESHOLD 10     // Out of 1023
+#define SENSOR_THRESHOLD 800     // Out of 4095
 #define SENSOR_PIN 15
 #define LED_BUILTIN 2
 
+bool isOn = true;
 bool isHit = false;
+int hitForce = 0;
+unsigned long resetTime = millis();
+unsigned long hitDuration = 0;
 
 class MyCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) override {
@@ -26,40 +30,55 @@ class MyCallbacks : public BLECharacteristicCallbacks {
 
         if (value.length() > 0) {
             if (value == "on") {
-                isHit = false;
-            } else if (value == "off") {
-                isHit = true;
-            }
+                isOn = true;
 
-            for (int i = 0; i < value.length(); i++) {
-                Serial.println(value[i]);
+                // Reset hit parameters
+                isHit = false;
+                resetTime = millis();
+                hitDuration = 0;
+            } else if (value == "off") {
+                isHit = false;
+                isOn = false;
             }
         }
     }
 
     void onRead(BLECharacteristic *pCharacteristic) override {
         if (isHit) {
-            pCharacteristic->setValue("hit");
+            char *buffer;
+            asprintf(&buffer, "hit;%d;%lu", hitForce, hitDuration);
+            pCharacteristic->setValue(buffer);
+        } else if (isOn){
+            pCharacteristic->setValue("on");
         } else {
-            pCharacteristic->setValue("");
+            pCharacteristic->setValue("off");
         }
     }
 };
 
 void checkIfIsHit() {
     int value = analogRead(SENSOR_PIN);
-    if (value < SENSOR_THRESHOLD) {
+    if (value < SENSOR_THRESHOLD || value == 4095) {
         return;
     }
 
+    isOn = false;
     isHit = true;
+
+    if (hitDuration == 0) {
+        hitDuration = millis() - resetTime;
+    }
+
+    if (value > hitForce) {
+        hitForce = value;
+    }
 }
 
 void outputIsHit() {
-    if (isHit) {
-        digitalWrite(LED_BUILTIN, LOW);
-    } else {
+    if (isOn) {
         digitalWrite(LED_BUILTIN, HIGH);
+    } else {
+        digitalWrite(LED_BUILTIN, LOW);
     }
 }
 
@@ -99,5 +118,5 @@ void setup() {
 void loop() {
     checkIfIsHit();
     outputIsHit();
-    delay(20);
+    delay(1);
 }
