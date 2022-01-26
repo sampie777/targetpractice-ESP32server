@@ -18,11 +18,12 @@
 #define SENSOR_PIN 15
 #define LED_BUILTIN 2
 #define LED_CHANNEL 0
+#define OFFLINE_TARGET_RESET_TIMEOUT 1000
 
 bool isOn = true;
 bool isHit = false;
 int brightness = 100;
-int hitThreshold = 800;     // Out of 4095
+int hitThreshold = 1000;     // Out of 4095
 int hitForce = 0;
 unsigned long resetTime = millis();
 unsigned long hitDuration = 0;
@@ -30,7 +31,17 @@ unsigned long hitDuration = 0;
 BLEServer *pServer;
 bool advertisingStarted = false;
 
-class MyCallbacks : public BLECharacteristicCallbacks {
+void targetReset() {
+    isOn = true;
+
+    // Reset hit parameters
+    isHit = false;
+    resetTime = millis();
+    hitDuration = 0;
+    hitForce = 0;
+}
+
+class TargetCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) override {
         advertisingStarted = false;
         std::string value = pCharacteristic->getValue();
@@ -42,13 +53,7 @@ class MyCallbacks : public BLECharacteristicCallbacks {
         }
 
         if (value == "on") {
-            isOn = true;
-
-            // Reset hit parameters
-            isHit = false;
-            resetTime = millis();
-            hitDuration = 0;
-            hitForce = 0;
+            targetReset();
             return;
         }
 
@@ -209,6 +214,22 @@ void testPiezoReadings() {
     delay(1);
 }
 
+void executeOfflineMode() {
+    if (pServer->getConnectedCount() > 0) {
+        return;
+    }
+
+    if (!isHit) {
+        return;
+    }
+
+    if (resetTime + hitDuration + OFFLINE_TARGET_RESET_TIMEOUT > millis()) {
+        return;
+    }
+
+    targetReset();
+}
+
 void setup() {
     Serial.begin(115200);
 
@@ -229,7 +250,7 @@ void setup() {
             BLECharacteristic::PROPERTY_WRITE |
             BLECharacteristic::PROPERTY_NOTIFY
     );
-    pCharacteristic->setCallbacks(new MyCallbacks());
+    pCharacteristic->setCallbacks(new TargetCallbacks());
     pCharacteristic->setValue("");
 
     BLECharacteristic *configCharacteristic = pService->createCharacteristic(
@@ -253,6 +274,7 @@ void setup() {
 void loop() {
     checkIfIsHit();
     outputIsHit();
+    executeOfflineMode();
     if (!advertisingStarted && pServer->getConnectedCount() == 0) {
         pServer->startAdvertising();
         advertisingStarted = true;
