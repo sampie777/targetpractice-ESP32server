@@ -151,7 +151,7 @@ class ConfigCallback : public BLECharacteristicCallbacks {
 
 void checkIfIsHit() {
     int value = analogRead(SENSOR_PIN);
-    if (value < hitThreshold || value == 4095) {
+    if (value < hitThreshold || value == 4095 || value == 2047 || value == 1023) {
         return;
     }
 
@@ -279,5 +279,5 @@ void loop() {
         pServer->startAdvertising();
         advertisingStarted = true;
     }
-    delay(1);
+    delay(2);
 }
